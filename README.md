@@ -95,6 +95,46 @@ if status is-interactive; and test "$TERM_PROGRAM" = ghostty
 end
 ```
 
+## Examples
+
+The `examples/` directory contains real-world usage patterns:
+
+- **`start-session.sh`** — Template for auto-injecting prompts into Claude Code sessions. Solves quoting issues when long command strings pass through tmux/DBus/fish chains.
+- **`worktree-manager.sh`** — Full git worktree manager for parallel Claude Code sessions. Demonstrates `ghostty-tab-launch` integration, tmux multi-window launch, and the start-script pattern.
+
+### Key patterns
+
+**Long commands via wrapper script:** Instead of passing long strings through `-e`, save a bash script and launch it:
+
+```bash
+# Instead of this (breaks with special characters):
+ghostty-tab-launch -e "claude --dangerously-skip-permissions 'very long prompt...'"
+
+# Do this:
+ghostty-tab-launch -e "bash /path/to/project/.claude/start.sh"
+```
+
+**Nested session prevention:** When launching from inside Claude Code (or any tool that sets environment markers), unset the marker in your wrapper script:
+
+```bash
+#!/usr/bin/env bash
+unset CLAUDECODE  # Prevents "nested session" error
+exec claude --dangerously-skip-permissions "$PROMPT"
+```
+
+**tmux multi-session with ghostty-tab-launch:** Create a tmux session, then open it in a Ghostty tab:
+
+```bash
+tmux new-session -d -s mywork -n window1 -c /path/to/project1
+tmux send-keys -t mywork:window1 "bash .claude/start.sh" Enter
+
+tmux new-window -t mywork -n window2 -c /path/to/project2
+sleep 2  # Let shell initialize before send-keys
+tmux send-keys -t mywork:window2 "bash .claude/start.sh" Enter
+
+ghostty-tab-launch -e "tmux attach -t mywork"
+```
+
 ## Limitations
 
 - **Fish shell only** — the startup hook is fish-specific. Bash/zsh would need equivalent `~/.bashrc`/`~/.zshrc` hooks.
