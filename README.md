@@ -135,6 +135,21 @@ tmux send-keys -t mywork:window2 "bash .claude/start.sh" Enter
 ghostty-tab-launch -e "tmux attach -t mywork"
 ```
 
+## Known issue: `--gtk-single-instance=true` zombie tabs
+
+Ghostty's default desktop file (on Fedora/GNOME) launches with `--gtk-single-instance=true`, which runs a background daemon process (`--initial-window=false`) that manages all windows/tabs via DBus. This can enter a broken state where new tabs are created as GTK widgets but **no shell process spawns** inside them — producing "zombie" tabs.
+
+Once the daemon is in this state, **every** new tab or window created through it will be a zombie. The only recovery is killing the daemon (`killall ghostty`) and relaunching.
+
+**Recommended fix:** Remove `--gtk-single-instance=true` from the desktop file so each Ghostty window runs as an independent process:
+
+```bash
+sudo sed -i 's|Exec=/usr/bin/ghostty --gtk-single-instance=true|Exec=/usr/bin/ghostty|g' \
+  /usr/share/applications/com.mitchellh.ghostty.desktop
+```
+
+This prevents one bad tab from cascading into all future tabs. The tradeoff is that DBus `new-tab` actions no longer work (no shared daemon to receive them), but if you're using tmux for multi-session workflows, this is a better approach anyway.
+
 ## Limitations
 
 - **Fish shell only** — the startup hook is fish-specific. Bash/zsh would need equivalent `~/.bashrc`/`~/.zshrc` hooks.
