@@ -67,15 +67,15 @@ ghostty-tab-launch -f -- htop
 
 ### Options
 
-| Flag         | Description                                                |
-| ------------ | ---------------------------------------------------------- |
-| `-e <cmd>`   | Command to run (alternative to positional args after `--`) |
-| `-d <dir>`   | Working directory (default: current directory)             |
-| `-w <N>`     | Target Ghostty window number (default: auto-detect)        |
-| `-t <title>` | Show a title line before running the command               |
-| `-s <file>`  | Run a fish script file                                     |
-| `-f`         | Force new window fallback (skip DBus)                      |
-| `-h`         | Show help                                                  |
+| Flag         | Description                                                           |
+| ------------ | --------------------------------------------------------------------- |
+| `-e <cmd>`   | Command to run (alternative to positional args after `--`)            |
+| `-d <dir>`   | Working directory (default: current directory)                        |
+| `-w <N>`     | Target Ghostty window number (auto-picks if one; prompts if multiple) |
+| `-t <title>` | Show a title line before running the command                          |
+| `-s <file>`  | Run a fish script file                                                |
+| `-f`         | Force new window fallback (skip DBus)                                 |
+| `-h`         | Show help                                                             |
 
 ## How the hook works
 
@@ -140,6 +140,7 @@ ghostty-tab-launch -e "tmux attach -t mywork"
 - **Fish shell only** — the startup hook is fish-specific. Bash/zsh would need equivalent `~/.bashrc`/`~/.zshrc` hooks.
 - **One pending command at a time** — if you call `ghostty-tab-launch` twice before the first tab starts, the second call overwrites the first. In practice this isn't an issue since tab creation is near-instant.
 - **Linux GTK only** — the DBus approach only works on the GTK (Linux) build of Ghostty. macOS uses a different IPC mechanism.
+- **Window targeting on Wayland** — Ghostty doesn't expose a window ID env var, and Wayland doesn't allow tools like `xdotool` to identify the focused window. When multiple Ghostty windows are open, the tool prompts interactively or falls back to the most recently created window. Use `-w <N>` to target explicitly.
 
 ## When this becomes unnecessary
 

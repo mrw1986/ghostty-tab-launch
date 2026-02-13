@@ -15,7 +15,7 @@
 # Options:
 #   -e <command>     Command to run in the new tab (alternative to positional args)
 #   -d <dir>         Working directory for the new tab (default: current directory)
-#   -w <N>           Target Ghostty window number (default: auto-detect lowest)
+#   -w <N>           Target Ghostty window number (default: auto-detect)
 #   -t <title>       Display a title line before running the command
 #   -s <file>        Run a fish script file instead of a command string
 #   -f               Force new window fallback (skip DBus tab attempt)
@@ -76,18 +76,41 @@ find_ghostty_window() {
         return 1
     fi
 
-    # Auto-detect: lowest-numbered window node
-    local node
-    node=$(gdbus introspect --session --dest "$DBUS_DEST" \
+    # Auto-detect: list all Ghostty window nodes
+    local all_nodes
+    all_nodes=$(gdbus introspect --session --dest "$DBUS_DEST" \
         --object-path "$DBUS_BASE_PATH" 2>/dev/null \
-        | grep -oP 'node \K\d+' | sort -n | head -1)
+        | grep -oP 'node \K\d+' | sort -n)
 
-    if [ -z "$node" ]; then
+    if [ -z "$all_nodes" ]; then
         echo -e "${RED}Error: No running Ghostty window found${NC}" >&2
         return 1
     fi
 
-    echo "$DBUS_BASE_PATH/$node"
+    local node_count
+    node_count=$(echo "$all_nodes" | wc -l)
+
+    if [ "$node_count" -eq 1 ]; then
+        # Only one window — use it
+        echo "$DBUS_BASE_PATH/$all_nodes"
+    elif [ -t 0 ]; then
+        # Multiple windows and running interactively — prompt user to pick
+        echo -e "${YELLOW}Multiple Ghostty windows detected. Use -w <N> to skip this prompt.${NC}" >&2
+        echo -e "${YELLOW}Available windows: $(echo $all_nodes | tr '\n' ' ')${NC}" >&2
+        local node
+        select node in $all_nodes; do
+            if [ -n "$node" ]; then
+                echo "$DBUS_BASE_PATH/$node"
+                return 0
+            fi
+        done
+        return 1
+    else
+        # Multiple windows, non-interactive — use highest (most recently created)
+        local node
+        node=$(echo "$all_nodes" | sort -rn | head -1)
+        echo "$DBUS_BASE_PATH/$node"
+    fi
 }
 
 # Create a new tab via DBus
